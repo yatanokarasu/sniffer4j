@@ -1,0 +1,1 @@
+Premain-Class: io.sniffer4j.Premain
