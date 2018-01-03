@@ -36,7 +36,7 @@ import javassist.CannotCompileException;
 import javassist.ClassPool;
 import javassist.CtClass;
 import javassist.CtMethod;
-import javassist.expr.ExprEditor;
+import javassist.NotFoundException;
 
 
 /**
@@ -46,25 +46,13 @@ public final class Premain {
     
     private static final ClassPool CLASS_POOL = ClassPool.getDefault();
     
+    
     /**
      * @param agentArguments Java Agent arguments
      * @param instrumentation An instrumentation instance for pre-main
      */
     public static void premain(final String agentArguments, final Instrumentation instrumentation) {
         instrumentation.addTransformer(new ClassFileTransformer() {
-            
-            /**
-             * @see java.lang.instrument.ClassFileTransformer#transform(java.lang.Module,
-             *      java.lang.ClassLoader, java.lang.String, java.lang.Class,
-             *      java.security.ProtectionDomain, byte[])
-             */
-            @Override
-            public byte[] transform(Module module, ClassLoader loader, String fullyClassname, Class<?> arg3, ProtectionDomain protectionDomain,
-                byte[] classfileByteSequence)
-                throws IllegalClassFormatException {
-                return this.transform(loader, fullyClassname, arg3, protectionDomain, classfileByteSequence);
-            }
-            
             
             /**
              * @see java.lang.instrument.ClassFileTransformer#transform(java.lang.ClassLoader,
@@ -86,21 +74,27 @@ public final class Premain {
                     for (final CtMethod aMethod : ctMethods) {
                         final String methodName = aMethod.getName();
                         final String varName = methodName + "_sniff_start";
-                        aMethod.addLocalVariable(varName, CtClass.longType);
-                        aMethod.insertBefore(varName + " = System.nanoTime();");
-                        aMethod.insertAfter("System.out.println(\"" + className + "#" + methodName + "()[Thread=\" + Thread.currentThread().getName() + \"]: \" + (System.nanoTime() - " + varName + "));");
+                        //aMethod.addLocalVariable(varName, CtClass.);
+                        //aMethod.insertBefore(varName + " = System.nanoTime();");
+                        //aMethod.insertAfter("System.out.println(\"" + className + "#" + methodName
+                        //    + "()[Thread=\" + Thread.currentThread().getName() + \"]: \" + (System.nanoTime() - " + varName + "));");
+                        aMethod.addLocalVariable(varName, CLASS_POOL.getCtClass("java.time.Instant"));
+                        aMethod.insertBefore(varName + " = java.time.Instant.now();");
+                        aMethod.insertAfter("System.out.println(\"" + className + "#" + methodName
+                            + "()[Thread=\" + Thread.currentThread().getName() + \":\" + Thread.currentThread().getId() + \"]: \" + java.time.Duration.between(" + varName + ", java.time.Instant.now()).toMillis());");
+                        
                     }
                     
                     return ctClass.toBytecode();
-                } catch (IOException | CannotCompileException cause) {
+                } catch (IOException | CannotCompileException | NotFoundException cause) {
                     IllegalClassFormatException e = new IllegalClassFormatException();
                     e.initCause(cause);
-                    
+                    System.out.println(e);
                     throw e;
                 }
             }
-
-
+            
+            
             private boolean accept(String fullyClassname) {
                 return fullyClassname.startsWith("io");
             }
