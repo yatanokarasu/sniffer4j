@@ -51,3 +51,12 @@ java -javaagent:/path/to/sniffer4j.jar=<options> <YOUR_APP>
 |---|---|---|---|
 | `patterns` | Regex | Regular Expression that specifies the packages to be measure.<br />You can use `;` to specify multiple packages. | `patterns=org.example.*;com.example.controller` 
 | `logpath` | String | **UNDERCONSTRUCTIONS** | `logpath=/path/to/sniffer4j.log` |
+
+
+# ToDo
+
+- [ ] `threshold` option
+- [ ] JUL(java.util.logging) implementation
+- [ ] Pluggable implementation 
+- [ ] periodically output
+- [ ] Virsualization
