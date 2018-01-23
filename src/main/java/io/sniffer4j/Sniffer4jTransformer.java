@@ -74,7 +74,7 @@ final class Sniffer4jTransformer implements ClassFileTransformer {
 
 
     private boolean isNotSubjectToBeInjectedSniffer(final String fullyClassname) {
-        return !Options.PATTERNS.handler().test(fullyClassname);
+        return Options.PACKAGES.value().test(fullyClassname);
     }
 
 
@@ -102,11 +102,13 @@ final class Sniffer4jTransformer implements ClassFileTransformer {
 
         aMethod.insertBefore(beginVariableName + " = java.time.Instant.now();");
         aMethod.insertAfter(endVariableName    + " = java.time.Instant.now();");
-
-        aMethod.insertAfter("System.out.println(\"" + className + "#" + methodName
-            + "()[Thread=\" + Thread.currentThread().getName() + \":\" + Thread.currentThread().getId() + \"]: \" + java.time.Duration.between("
-            //+ beginVariableName + ", java.time.Instant.now()).toMillis());");
-            + beginVariableName + ", " + endVariableName + ").toMillis());");
+        
+        aMethod.insertAfter("io.sniffer4j.LogBroker.instance().submit("
+            + "Thread.currentThread(),"
+            + "\"" + className  + "\","
+            + "\"" + methodName + "\","
+            + beginVariableName + ","
+            + endVariableName + ");");
     }
 
 }

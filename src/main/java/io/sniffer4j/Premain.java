@@ -25,20 +25,24 @@ package io.sniffer4j;
 
 
 import java.lang.instrument.Instrumentation;
-import java.util.AbstractMap;
 import java.util.Arrays;
-import java.util.Map;
+import java.util.Objects;
 import java.util.function.Consumer;
-import java.util.function.Function;
-import java.util.function.Predicate;
+import java.util.stream.Stream;
 
 
 /**
+ * Injects instrumentation code into byte-codes of methods included specified packages at the time
+ * of JVM startup, see details for {@link java.lang.instrument.Instrumentation}.
  * 
+ * <p>By default, Sniffer4j does NOT inject instrumentation code under the following packages:
+ * {@link java}.*, {@link jdk}.*, {@link com.sun}.*, {@link sun}.*, {@link oracle}.* and {@link io.sniffer4j}.*.
  */
 public final class Premain {
 
     /**
+     * 
+     * 
      * @param agentArguments Java Agent arguments
      * @param instrumentation An instrumentation instance for pre-main
      */
@@ -52,57 +56,31 @@ public final class Premain {
 
 
     private static void parseArguments(final String agentArguments) {
-        Arrays.asList(agentArguments.split(",", -1)).stream()
-            .map(toKeyValuePair())
-            .filter(isValidOption())
-            .map(keyToOptions())
-            .forEach(setOptionValue());
+        if (Objects.isNull(agentArguments)) {
+            return;
+        }
+
+        separateByComma(agentArguments).forEach(setOptionValue());
     }
 
 
-    private static Function<String, Map.Entry<String, String>> toKeyValuePair() {
-        return v -> {
-            final String[] pair = v.split("=", -1);
-
-            return new AbstractMap.SimpleImmutableEntry<>(pair[0], pair[1]);
-        };
+    private static Stream<String> separateByComma(final String agentArguments) {
+        return Arrays.asList(agentArguments.split(",", -1)).stream();
     }
 
 
-    private static Predicate<Map.Entry<String, String>> isValidOption() {
-        return p -> {
-            final String name = p.getKey();
+    private static Consumer<String> setOptionValue() {
+        return arg -> {
+            final String[] pair = arg.split("=", -1);
+            final String name = pair[0];
+            final String value = pair[1];
 
-            // validate option name
             try {
-                Options.valueOf(name.toUpperCase());
+                Options.of(name).value(value);
             } catch (@SuppressWarnings("unused") final IllegalArgumentException ignored) {
-                System.err.println("[WARNING] " + name + ": unknown option.");
-
-                return false;
+                System.err.printf("Unexpected value '%s' of %s, use default value.", value, name);
             }
-
-            // validate option value
-            if (p.getValue().isEmpty()) {
-                System.err.println("[WARNING] " + name + ": invalid option.");
-
-                return false;
-            }
-
-            return true;
         };
-    }
-
-
-    @SuppressWarnings("rawtypes")
-    private static Function<Map.Entry<String, String>, Map.Entry<Options, String>> keyToOptions() {
-        return v -> new AbstractMap.SimpleImmutableEntry<>(Options.valueOf(v.getKey()), v.getValue());
-    }
-
-
-    @SuppressWarnings("rawtypes")
-    private static Consumer<Map.Entry<Options, String>> setOptionValue() {
-        return e -> e.getKey().update(e.getValue());
     }
 
 }

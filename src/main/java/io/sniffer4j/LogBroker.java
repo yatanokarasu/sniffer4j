@@ -32,7 +32,6 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
-import java.nio.file.Paths;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDateTime;
@@ -70,13 +69,17 @@ public class LogBroker {
 
     /**
      * @param aThread An instance of {@link Thread} that called this method
+     * @param className Name of class which called this method
+     * @param methodName Name of method which called this method
      * @param begin An instant at the beginning of method execution
      * @param end An instant at the end of method execution
      */
-    public void submit(final Thread aThread, final Instant begin, final Instant end) {
+    public void submit(final Thread aThread, final String className, final String methodName, final Instant begin, final Instant end) {
         final Record aRecord = new Record();
         aRecord.threadName = aThread.getName();
         aRecord.threadId = aThread.getId();
+        aRecord.className = className;
+        aRecord.methodName = methodName;
         aRecord.begin = begin;
         aRecord.end = end;
 
@@ -147,7 +150,7 @@ public class LogBroker {
 
     private void startConsumerThread() {
         this.consumer.execute(() -> {
-            try (final BufferedWriter buffer = Files.newBufferedWriter(Paths.get("d:", "sniffer4j.log"), CREATE, TRUNCATE_EXISTING);
+            try (final BufferedWriter buffer = Files.newBufferedWriter(Options.LOGFILE.value(), CREATE, TRUNCATE_EXISTING);
                 final PrintWriter writer = new PrintWriter(buffer)) {
                 writer.println(csvFileHeader());
 
@@ -172,16 +175,20 @@ public class LogBroker {
 
         private Instant end;
 
+        private String  className;
+
+        private String  methodName;
+
         private long    threadId;
 
         private String  threadName;
-        
-        
+
+
         private String begin() {
             return toLocalDateTime(this.begin);
         }
-        
-        
+
+
         private String end() {
             return toLocalDateTime(this.end);
         }
@@ -189,6 +196,16 @@ public class LogBroker {
 
         private String duration() {
             return String.valueOf(Duration.between(this.begin, this.end).toMillis());
+        }
+
+
+        private String className() {
+            return this.className;
+        }
+
+
+        private String methodName() {
+            return this.methodName;
         }
 
 
@@ -215,6 +232,8 @@ public class LogBroker {
             return new StringJoiner(",")
                 .add(threadName())
                 .add(threadId())
+                .add(className())
+                .add(methodName())
                 .add(begin())
                 .add(end())
                 .add(duration())
